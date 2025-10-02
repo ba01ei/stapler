@@ -7,6 +7,7 @@ const axios = require("axios");
 const { PDFDocument } = require("pdf-lib");
 const sharp = require("sharp");
 const readline = require("readline");
+const heicConvert = require("heic-convert");
 
 // Function to parse URLs from a string with multiple separators and extract URLs from mixed text
 function parseUrls(input) {
@@ -90,11 +91,13 @@ async function getFileType(filePath) {
       gif: [0x47, 0x49, 0x46],
       bmp: [0x42, 0x4d],
       webp: [0x52, 0x49, 0x46, 0x46],
-      heic: [0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63], // HEIC signature (first 12 bytes)
+      heic: [
+        0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63,
+      ], // HEIC signature (first 12 bytes)
     };
 
     for (const [type, signature] of Object.entries(signatures)) {
-      if (type === 'heic') {
+      if (type === "heic") {
         // HEIC has a longer signature, check first 12 bytes
         if (signature.every((byte, index) => buffer[index] === byte)) {
           return "image";
@@ -108,7 +111,7 @@ async function getFileType(filePath) {
 
     // Additional check for HEIC files (alternative signature)
     const heicAlt = buffer.slice(4, 12).toString();
-    if (heicAlt === 'ftypheic' || heicAlt === 'ftypmif1') {
+    if (heicAlt === "ftypheic" || heicAlt === "ftypmif1") {
       return "image";
     }
 
@@ -123,25 +126,73 @@ async function imageToPdf(imagePath) {
   try {
     // First, try to read the image and get metadata to check if it's supported
     let sharpInstance = sharp(imagePath);
-    
+    let isHeicFile = false;
+
     try {
       const metadata = await sharpInstance.metadata();
-      console.log(`   📏 Image: ${metadata.width}x${metadata.height}, format: ${metadata.format}`);
+      console.log(
+        `   📏 Image: ${metadata.width}x${metadata.height}, format: ${metadata.format}`
+      );
+      isHeicFile = metadata.format === "heif";
     } catch (metadataError) {
-      console.log(`   ⚠️  Warning: Could not read metadata: ${metadataError.message}`);
+      console.log(
+        `   ⚠️  Warning: Could not read metadata: ${metadataError.message}`
+      );
+      // Check if it might be a HEIC file by examining the file content
+      const buffer = await fs.readFile(imagePath);
+      const heicAlt = buffer.slice(4, 12).toString();
+      isHeicFile = heicAlt === "ftypheic" || heicAlt === "ftypmif1";
     }
 
-    // Process image with Sharp, applying auto-rotation based on EXIF data
-    // Sharp automatically handles HEIC files when properly configured
-    const processedImageBuffer = await sharpInstance
-      .rotate() // Auto-rotate based on EXIF orientation
-      .jpeg({ quality: 90 }) // Convert to JPEG for PDF embedding
-      .toBuffer();
+    let processedImageBuffer;
+    let imageWidth, imageHeight;
 
-    // Get the dimensions of the processed image
-    const finalMetadata = await sharp(processedImageBuffer).metadata();
-    const imageWidth = finalMetadata.width;
-    const imageHeight = finalMetadata.height;
+    try {
+      // Try Sharp first (works for most formats including some HEIC files)
+      processedImageBuffer = await sharpInstance
+        .rotate() // Auto-rotate based on EXIF orientation
+        .jpeg({ quality: 90 }) // Convert to JPEG for PDF embedding
+        .toBuffer();
+
+      // Get the dimensions of the processed image
+      const finalMetadata = await sharp(processedImageBuffer).metadata();
+      imageWidth = finalMetadata.width;
+      imageHeight = finalMetadata.height;
+
+      console.log(`   ✅ Processed with Sharp successfully`);
+    } catch (sharpError) {
+      if (isHeicFile) {
+        console.log(
+          `   ⚠️  Sharp failed for HEIC, trying heic-convert fallback...`
+        );
+
+        try {
+          // Fallback to heic-convert for HEIC files
+          const inputBuffer = await fs.readFile(imagePath);
+          processedImageBuffer = await heicConvert({
+            buffer: inputBuffer,
+            format: "JPEG",
+            quality: 0.9,
+          });
+
+          // Get dimensions of the converted image
+          const finalMetadata = await sharp(processedImageBuffer).metadata();
+          imageWidth = finalMetadata.width;
+          imageHeight = finalMetadata.height;
+
+          console.log(
+            `   ✅ Processed with heic-convert fallback successfully`
+          );
+        } catch (heicError) {
+          throw new Error(
+            `Both Sharp and heic-convert failed for HEIC file: Sharp error: ${sharpError.message}, heic-convert error: ${heicError.message}`
+          );
+        }
+      } else {
+        // Not a HEIC file, re-throw the Sharp error
+        throw sharpError;
+      }
+    }
 
     const pdfDoc = await PDFDocument.create();
     const image = await pdfDoc.embedJpg(processedImageBuffer);
@@ -160,8 +211,10 @@ async function imageToPdf(imagePath) {
     return await pdfDoc.save();
   } catch (error) {
     // Provide more specific error information
-    if (error.message.includes('heif') || error.message.includes('HEIF')) {
-      throw new Error(`HEIC/HEIF processing failed: ${error.message}. This may be due to unsupported HEIC codec or Sharp configuration.`);
+    if (error.message.includes("heif") || error.message.includes("HEIF")) {
+      throw new Error(
+        `HEIC/HEIF processing failed: ${error.message}. This may be due to unsupported HEIC codec or Sharp configuration.`
+      );
     }
     throw new Error(`Failed to convert image to PDF: ${error.message}`);
   }
@@ -475,9 +528,9 @@ async function processFiles(urls, outputPath) {
         failedFiles.push({
           url: url,
           index: i + 1,
-          error: error.message
+          error: error.message,
         });
-        
+
         // Clean up temp file if it exists
         try {
           const fileId = extractFileId(url);
@@ -494,7 +547,7 @@ async function processFiles(urls, outputPath) {
       console.log(`\n❌ No files were successfully processed.`);
       if (failedFiles.length > 0) {
         console.log(`\n📋 Failed files (${failedFiles.length}):`);
-        failedFiles.forEach(failed => {
+        failedFiles.forEach((failed) => {
           console.log(`   File ${failed.index}: ${failed.error}`);
           console.log(`   URL: ${failed.url}`);
         });
@@ -505,10 +558,12 @@ async function processFiles(urls, outputPath) {
     // Show summary if some files failed
     if (failedFiles.length > 0) {
       console.log(`\n⚠️  ${failedFiles.length} file(s) failed to process:`);
-      failedFiles.forEach(failed => {
+      failedFiles.forEach((failed) => {
         console.log(`   File ${failed.index}: ${failed.error}`);
       });
-      console.log(`\n✅ Continuing with ${pdfBuffers.length} successful file(s)...`);
+      console.log(
+        `\n✅ Continuing with ${pdfBuffers.length} successful file(s)...`
+      );
     }
 
     // Merge all PDFs

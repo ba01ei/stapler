@@ -17,7 +17,8 @@ Then follow the prompts to merge your files!
 - ✅ **Direct command mode** - One-time usage for scripting and automation
 - ✅ **Smart URL extraction** - Finds Google Drive URLs from mixed text input
 - ✅ Download files from publicly shared Google Drive URLs
-- ✅ Support for PDF files and common image formats (PNG, JPG, JPEG, GIF, BMP, WEBP, HEIC*)
+- ✅ Support for PDF files and common image formats (PNG, JPG, JPEG, GIF, BMP, WEBP, HEIC\*)
+- ✅ **Advanced HEIC support** - Uses heic-convert fallback when Sharp fails
 - ✅ Automatic image-to-PDF conversion with EXIF orientation correction
 - ✅ Merge multiple PDFs into a single document
 - ✅ **Pre-flight permission checking** - validates all URLs before processing
@@ -201,9 +202,9 @@ The Google Drive files must be **publicly shared**. The tool supports various Go
 - `.gif` - Graphics Interchange Format
 - `.bmp` - Bitmap Image File
 - `.webp` - WebP Image Format
-- `.heic` / `.heif` - High Efficiency Image Container (limited support)*
+- `.heic` / `.heif` - High Efficiency Image Container (with fallback support)\*
 
-**Note on HEIC support:** HEIC/HEIF files are detected but may fail to process depending on the specific codec used and Sharp library configuration. The tool will continue processing other files if HEIC conversion fails.
+**Enhanced HEIC support:** The tool first attempts to process HEIC/HEIF files using Sharp. If that fails (due to codec limitations), it automatically falls back to the `heic-convert` library for reliable HEIC processing. This dual-approach ensures maximum compatibility with HEIC files.
 
 Images are automatically converted to PDF pages with the following features:
 
@@ -216,6 +217,7 @@ Images are automatically converted to PDF pages with the following features:
 - **pdf-lib**: PDF manipulation and merging
 - **axios**: HTTP client for downloading files
 - **sharp**: High-performance image processing
+- **heic-convert**: HEIC/HEIF image conversion fallback
 - **commander**: Command-line interface framework
 - **fs-extra**: Enhanced file system operations
 
@@ -237,14 +239,14 @@ Before downloading any files, the tool performs a pre-flight check on all provid
 
 ## Complete Command Reference
 
-| Command | Description | Usage Example |
-|---------|-------------|---------------|
-| `npm run interactive` | Interactive mode (recommended) | Follow prompts for URLs and filename |
-| `npm run i` | Short alias for interactive mode | Same as above |
-| `npm run merge -- "urls" [options]` | Direct merge with npm | `npm run merge -- "url1,url2" -n filename` |
-| `npm run m -- "urls" [options]` | Short alias for direct merge | `npm run m -- "url1,url2" -n filename` |
-| `node index.js interactive` | Direct interactive command | Follow prompts |
-| `node index.js "urls" [options]` | Direct merge command | `node index.js "url1,url2" -n filename` |
+| Command                             | Description                      | Usage Example                              |
+| ----------------------------------- | -------------------------------- | ------------------------------------------ |
+| `npm run interactive`               | Interactive mode (recommended)   | Follow prompts for URLs and filename       |
+| `npm run i`                         | Short alias for interactive mode | Same as above                              |
+| `npm run merge -- "urls" [options]` | Direct merge with npm            | `npm run merge -- "url1,url2" -n filename` |
+| `npm run m -- "urls" [options]`     | Short alias for direct merge     | `npm run m -- "url1,url2" -n filename`     |
+| `node index.js interactive`         | Direct interactive command       | Follow prompts                             |
+| `node index.js "urls" [options]`    | Direct merge command             | `node index.js "url1,url2" -n filename`    |
 
 **Remember:** Use `--` with npm commands to pass arguments to the script.
 
@@ -253,21 +255,24 @@ Before downloading any files, the tool performs a pre-flight check on all provid
 The tool handles existing output files differently depending on the mode:
 
 ### Interactive Mode
+
 - **Prompts for new name**: If the specified filename already exists, you'll be asked to choose a different name
 - **Continues operation**: No interruption to the workflow
 - **User-friendly**: Clear message about why the filename can't be used
 
-### Direct Mode  
+### Direct Mode
+
 - **Returns error**: If the output file already exists, the command fails with an error message
 - **Prevents overwriting**: Protects existing files from accidental overwrite
 - **Script-friendly**: Clear exit code (1) for automation and error handling
 
 **Example:**
+
 ```bash
 # Interactive mode - will ask for new name if file exists
 npm run i
 
-# Direct mode - will error if file exists  
+# Direct mode - will error if file exists
 npm run m -- "urls" -n existing-filename
 # ❌ Error: Output file 'output/existing-filename.pdf' already exists
 ```
