@@ -10,6 +10,8 @@
     "start": "node index.js",
     "interactive": "node index.js interactive",
     "i": "node index.js interactive",
+    "merge": "node index.js",
+    "m": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

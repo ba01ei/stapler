@@ -59,13 +59,15 @@ node index.js i
 ```
 
 The interactive mode will:
+
 1. **Prompt for URLs**: Enter multiple Google Drive URLs with flexible formatting
-2. **Ask for filename**: Specify the output filename (without .pdf extension)  
+2. **Ask for filename**: Specify the output filename (without .pdf extension)
 3. **Process and merge**: Automatically handle downloading, conversion, and merging
 4. **Repeat**: Continue with new merges until you press Ctrl+C to exit
 5. **Error handling**: If there are issues, you can try again without restarting
 
 **Interactive Mode Workflow:**
+
 ```
 🚀 PDF Merge CLI - Interactive Mode
 =====================================
@@ -96,8 +98,16 @@ Press Ctrl+C anytime to exit.
 For one-time usage or scripting:
 
 ```bash
-node index.js "<urls>" [options]
+# Using npm (recommended)
+npm run merge -- "url1, url2, url3" -n filename
+# or shorter:
+npm run m -- "url1, url2, url3" -n filename
+
+# Using node directly
+node index.js "url1, url2, url3" -n filename
 ```
+
+**Note:** The `--` is required with npm to pass arguments to the underlying script.
 
 The URLs can be provided as a single string with multiple separators:
 
@@ -109,26 +119,20 @@ The URLs can be provided as a single string with multiple separators:
 ### Examples
 
 ```bash
-# Space separated URLs (outputs to output/merged.pdf by default)
-node index.js "https://drive.google.com/file/d/1ABC123/view https://drive.google.com/file/d/2DEF456/view"
+# Space separated URLs with npm
+npm run merge -- "https://drive.google.com/file/d/1ABC123/view https://drive.google.com/file/d/2DEF456/view" -n my-document
 
-# Comma separated URLs with custom output using -o
-node index.js "https://drive.google.com/file/d/1ABC123/view, https://drive.google.com/file/d/2DEF456/view" -o my-merged-document.pdf
+# Comma separated URLs with npm (short command)
+npm run m -- "https://drive.google.com/file/d/1ABC123/view, https://drive.google.com/file/d/2DEF456/view" -n report-2024
 
-# Using the short -n option for quick filename (saves to output/1234.pdf)
-node index.js "https://drive.google.com/file/d/1ABC123/view, https://drive.google.com/file/d/2DEF456/view" -n 1234
+# Using custom output path with npm
+npm run merge -- "url1, url2" -o custom/path/document.pdf
 
-# Newline separated URLs (saves to output/final-document.pdf)
-node index.js "https://drive.google.com/file/d/1ABC123/view
-https://drive.google.com/file/d/2DEF456/view
-https://drive.google.com/file/d/3GHI789/view" --name final-document
-
-# Mixed separators with short filename (saves to output/report-2024.pdf)
-node index.js "https://drive.google.com/file/d/1ABC123/view, https://drive.google.com/file/d/2DEF456/view
-https://drive.google.com/file/d/3GHI789/view" -n report-2024
+# Direct node usage (still works)
+node index.js "https://drive.google.com/file/d/1ABC123/view, https://drive.google.com/file/d/2DEF456/view" -n final-document
 
 # Single URL - will show informational message and exit (no processing)
-node index.js "https://drive.google.com/file/d/1ABC123/view"
+npm run merge -- "https://drive.google.com/file/d/1ABC123/view"
 ```
 
 ### Options
@@ -218,6 +222,19 @@ The tool includes comprehensive error handling for:
 ### Permission Validation
 
 Before downloading any files, the tool performs a pre-flight check on all provided URLs to ensure they are accessible. If any URL fails the permission check, **no processing occurs** and you'll receive a detailed report of which URLs need attention.
+
+## Complete Command Reference
+
+| Command | Description | Usage Example |
+|---------|-------------|---------------|
+| `npm run interactive` | Interactive mode (recommended) | Follow prompts for URLs and filename |
+| `npm run i` | Short alias for interactive mode | Same as above |
+| `npm run merge -- "urls" [options]` | Direct merge with npm | `npm run merge -- "url1,url2" -n filename` |
+| `npm run m -- "urls" [options]` | Short alias for direct merge | `npm run m -- "url1,url2" -n filename` |
+| `node index.js interactive` | Direct interactive command | Follow prompts |
+| `node index.js "urls" [options]` | Direct merge command | `node index.js "url1,url2" -n filename` |
+
+**Remember:** Use `--` with npm commands to pass arguments to the script.
 
 ## Troubleshooting
 
