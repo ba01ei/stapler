@@ -15,6 +15,7 @@ Then follow the prompts to merge your files!
 
 - ✅ **Interactive mode** - Guided experience with prompts and continuous operation
 - ✅ **Direct command mode** - One-time usage for scripting and automation
+- ✅ **Smart URL extraction** - Finds Google Drive URLs from mixed text input
 - ✅ Download files from publicly shared Google Drive URLs
 - ✅ Support for PDF files and common image formats (PNG, JPG, JPEG, GIF, BMP, WEBP)
 - ✅ Automatic image-to-PDF conversion with EXIF orientation correction
@@ -24,6 +25,7 @@ Then follow the prompts to merge your files!
 - ✅ Automatic cleanup of temporary files
 - ✅ Smart edge case handling (single URL detection)
 - ✅ **Flexible input formats** - space, comma, newline separated URLs
+- ✅ **Graceful error handling** - continues operation after failures in interactive mode
 
 ## Installation
 
@@ -60,12 +62,13 @@ node index.js i
 
 The interactive mode will:
 
-1. **Prompt for URLs**: Enter multiple Google Drive URLs with flexible formatting
-2. **Ask for filename**: Specify the output filename (without .pdf extension)
-3. **Check file existence**: If filename already exists, prompts for a different name
-4. **Process and merge**: Automatically handle downloading, conversion, and merging
-5. **Repeat**: Continue with new merges until you press Ctrl+C to exit
-6. **Error handling**: If there are issues, you can try again without restarting
+1. **Prompt for URLs**: Paste URLs in any format - just press Enter (no extra steps needed)
+2. **Smart URL extraction**: Automatically finds Google Drive URLs from mixed text input
+3. **Ask for filename**: Specify the output filename (without .pdf extension)
+4. **Check file existence**: If filename already exists, prompts for a different name
+5. **Process and merge**: Automatically handle downloading, conversion, and merging
+6. **Handle failures gracefully**: If URLs fail, shows which ones and asks for new URLs
+7. **Repeat**: Continue with new merges until you press Ctrl+C to exit
 
 **Interactive Mode Workflow:**
 
@@ -78,18 +81,19 @@ Press Ctrl+C anytime to exit.
 📋 Step 1: Provide Google Drive URLs
 ────────────────────────────────────
 🔗 Enter Google Drive URLs (publicly shared):
-💡 Tip: You can paste multiple URLs separated by spaces, commas, or newlines
-📝 Press Enter twice when done, or type 'done' on a new line:
+💡 Tip: Paste URLs (any format) and press Enter - non-URL text will be ignored
 
-[Enter your URLs here]
+[Paste: "https://drive.google.com/file/d/1ABC123/view some text https://drive.google.com/file/d/2DEF456/view"]
 
-✅ Found 3 URLs to process
+✅ Found 2 valid URLs to process
+   1. https://drive.google.com/file/d/1ABC123/view
+   2. https://drive.google.com/file/d/2DEF456/view
 
 📝 Step 2: Choose output filename
 ──────────────────────────────────
 📄 Enter output filename (without .pdf extension): my-merged-document
 
-🔄 Processing 3 files...
+🔄 Processing 2 files...
 [Processing output...]
 🎉 Success! Ready for next merge.
 ```
@@ -131,6 +135,9 @@ npm run merge -- "url1, url2" -o custom/path/document.pdf
 
 # Direct node usage (still works)
 node index.js "https://drive.google.com/file/d/1ABC123/view, https://drive.google.com/file/d/2DEF456/view" -n final-document
+
+# Mixed text input - non-URL text is automatically ignored
+npm run m -- "Here are the files: https://drive.google.com/file/d/1ABC123/view and also https://drive.google.com/file/d/2DEF456/view please merge them" -n smart-extraction
 
 # Single URL - will show informational message and exit (no processing)
 npm run merge -- "https://drive.google.com/file/d/1ABC123/view"

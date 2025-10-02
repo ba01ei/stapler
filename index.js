@@ -8,13 +8,20 @@ const { PDFDocument } = require("pdf-lib");
 const sharp = require("sharp");
 const readline = require("readline");
 
-// Function to parse URLs from a string with multiple separators
+// Function to parse URLs from a string with multiple separators and extract URLs from mixed text
 function parseUrls(input) {
-  // Split by various separators: newlines, commas with optional spaces, or single/multiple spaces
-  const urls = input
+  // First split by various separators: newlines, commas with optional spaces, or single/multiple spaces
+  const tokens = input
     .split(/[\n,]|\s+/)
-    .map((url) => url.trim())
-    .filter((url) => url.length > 0);
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+
+  // Filter to only keep valid Google Drive URLs
+  const urls = tokens.filter((token) => {
+    // Check if token looks like a Google Drive URL
+    return token.includes('drive.google.com') && 
+           (token.includes('/file/d/') || token.includes('id='));
+  });
 
   return urls;
 }
@@ -223,31 +230,15 @@ async function runInteractiveMode() {
   const askMultiLineQuestion = (question) => {
     return new Promise((resolve) => {
       console.log(question);
-      console.log(
-        "💡 Tip: You can paste multiple URLs separated by spaces, commas, or newlines"
-      );
-      console.log(
-        "📝 Press Enter twice when done, or type 'done' on a new line:"
-      );
-
+      console.log("💡 Tip: Paste URLs (any format) and press Enter - non-URL text will be ignored");
+      
       let input = "";
-      let emptyLineCount = 0;
-
+      
       const onLine = (line) => {
-        if (line.trim() === "done" || emptyLineCount >= 1) {
-          rl.removeListener("line", onLine);
-          resolve(input.trim());
-          return;
-        }
-
-        if (line.trim() === "") {
-          emptyLineCount++;
-        } else {
-          emptyLineCount = 0;
-          input += line + "\n";
-        }
+        rl.removeListener("line", onLine);
+        resolve(line.trim());
       };
-
+      
       rl.on("line", onLine);
     });
   };
@@ -268,57 +259,72 @@ async function runInteractiveMode() {
       console.log("📋 Step 1: Provide Google Drive URLs");
       console.log("────────────────────────────────────");
 
-      const urlsInput = await askMultiLineQuestion(
-        "🔗 Enter Google Drive URLs (publicly shared):"
-      );
+      let urls = [];
+      
+      // Loop until we get valid URLs
+      while (urls.length === 0) {
+        const urlsInput = await askMultiLineQuestion(
+          "🔗 Enter Google Drive URLs (publicly shared):"
+        );
 
-      if (!urlsInput.trim()) {
-        console.log("⚠️  No URLs provided. Please try again.\n");
-        continue;
+        if (!urlsInput.trim()) {
+          console.log("⚠️  No input provided. Please try again.\n");
+          continue;
+        }
+
+        // Parse URLs from input (extracts URLs from mixed text)
+        urls = parseUrls(urlsInput);
+
+        if (urls.length === 0) {
+          console.log("⚠️  No valid Google Drive URLs found in your input.");
+          console.log("💡 Make sure URLs contain 'drive.google.com' and are publicly shared.\n");
+          continue;
+        }
+
+        if (urls.length === 1) {
+          console.log("ℹ️  Only one URL found - no need to merge!");
+          console.log("💡 Tip: Provide multiple URLs to merge files together\n");
+          urls = []; // Reset to ask again
+          continue;
+        }
+
+        console.log(`✅ Found ${urls.length} valid URLs to process`);
+        
+        // Show which URLs were extracted
+        urls.forEach((url, index) => {
+          console.log(`   ${index + 1}. ${url}`);
+        });
+        console.log();
       }
-
-      // Parse URLs
-      const urls = parseUrls(urlsInput);
-
-      if (urls.length === 0) {
-        console.log("⚠️  No valid URLs found. Please try again.\n");
-        continue;
-      }
-
-      if (urls.length === 1) {
-        console.log("ℹ️  Only one URL provided - no need to merge!");
-        console.log("💡 Tip: Provide multiple URLs to merge files together\n");
-        continue;
-      }
-
-      console.log(`✅ Found ${urls.length} URLs to process\n`);
 
       console.log("📝 Step 2: Choose output filename");
       console.log("──────────────────────────────────");
-      
+
       let outputName;
       let outputPath;
-      
+
       // Loop until we get a valid filename that doesn't exist
       while (true) {
         outputName = await askQuestion(
           "📄 Enter output filename (without .pdf extension): "
         );
-        
+
         if (!outputName.trim()) {
           console.log("⚠️  No filename provided. Please try again.\n");
           continue;
         }
 
         outputPath = path.join("output", `${outputName.trim()}.pdf`);
-        
+
         // Check if file already exists
         if (await fs.pathExists(outputPath)) {
-          console.log(`⚠️  File '${outputName.trim()}.pdf' already exists in output folder.`);
+          console.log(
+            `⚠️  File '${outputName.trim()}.pdf' already exists in output folder.`
+          );
           console.log("💡 Please choose a different filename.\n");
           continue;
         }
-        
+
         break; // Valid filename that doesn't exist
       }
 
@@ -333,9 +339,16 @@ async function runInteractiveMode() {
     } catch (error) {
       console.log("═".repeat(50));
       console.log(`❌ Error occurred: ${error.message}`);
-      console.log(
-        "💡 Please try again with different URLs or check the file permissions.\n"
-      );
+      
+      // Check if it's a permission error - if so, ask for URLs again
+      if (error.message.includes("Permission check failed")) {
+        console.log("💡 Please check the URLs and try again with different ones.\n");
+        continue; // Go back to asking for URLs
+      } else {
+        console.log(
+          "💡 Please try again with different URLs or check the file permissions.\n"
+        );
+      }
     }
   }
 }
@@ -488,7 +501,9 @@ program
     // Check if output file already exists (direct mode - return error)
     if (await fs.pathExists(outputPath)) {
       console.error(`❌ Error: Output file '${outputPath}' already exists`);
-      console.error("💡 Please choose a different filename or remove the existing file");
+      console.error(
+        "💡 Please choose a different filename or remove the existing file"
+      );
       process.exit(1);
     }
 
