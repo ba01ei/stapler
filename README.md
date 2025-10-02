@@ -62,9 +62,10 @@ The interactive mode will:
 
 1. **Prompt for URLs**: Enter multiple Google Drive URLs with flexible formatting
 2. **Ask for filename**: Specify the output filename (without .pdf extension)
-3. **Process and merge**: Automatically handle downloading, conversion, and merging
-4. **Repeat**: Continue with new merges until you press Ctrl+C to exit
-5. **Error handling**: If there are issues, you can try again without restarting
+3. **Check file existence**: If filename already exists, prompts for a different name
+4. **Process and merge**: Automatically handle downloading, conversion, and merging
+5. **Repeat**: Continue with new merges until you press Ctrl+C to exit
+6. **Error handling**: If there are issues, you can try again without restarting
 
 **Interactive Mode Workflow:**
 
@@ -235,6 +236,30 @@ Before downloading any files, the tool performs a pre-flight check on all provid
 | `node index.js "urls" [options]` | Direct merge command | `node index.js "url1,url2" -n filename` |
 
 **Remember:** Use `--` with npm commands to pass arguments to the script.
+
+## File Existence Handling
+
+The tool handles existing output files differently depending on the mode:
+
+### Interactive Mode
+- **Prompts for new name**: If the specified filename already exists, you'll be asked to choose a different name
+- **Continues operation**: No interruption to the workflow
+- **User-friendly**: Clear message about why the filename can't be used
+
+### Direct Mode  
+- **Returns error**: If the output file already exists, the command fails with an error message
+- **Prevents overwriting**: Protects existing files from accidental overwrite
+- **Script-friendly**: Clear exit code (1) for automation and error handling
+
+**Example:**
+```bash
+# Interactive mode - will ask for new name if file exists
+npm run i
+
+# Direct mode - will error if file exists  
+npm run m -- "urls" -n existing-filename
+# ❌ Error: Output file 'output/existing-filename.pdf' already exists
+```
 
 ## Troubleshooting
 

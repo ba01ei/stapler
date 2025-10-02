@@ -295,17 +295,32 @@ async function runInteractiveMode() {
 
       console.log("📝 Step 2: Choose output filename");
       console.log("──────────────────────────────────");
+      
+      let outputName;
+      let outputPath;
+      
+      // Loop until we get a valid filename that doesn't exist
+      while (true) {
+        outputName = await askQuestion(
+          "📄 Enter output filename (without .pdf extension): "
+        );
+        
+        if (!outputName.trim()) {
+          console.log("⚠️  No filename provided. Please try again.\n");
+          continue;
+        }
 
-      const outputName = await askQuestion(
-        "📄 Enter output filename (without .pdf extension): "
-      );
-
-      if (!outputName.trim()) {
-        console.log("⚠️  No filename provided. Please try again.\n");
-        continue;
+        outputPath = path.join("output", `${outputName.trim()}.pdf`);
+        
+        // Check if file already exists
+        if (await fs.pathExists(outputPath)) {
+          console.log(`⚠️  File '${outputName.trim()}.pdf' already exists in output folder.`);
+          console.log("💡 Please choose a different filename.\n");
+          continue;
+        }
+        
+        break; // Valid filename that doesn't exist
       }
-
-      const outputPath = path.join("output", `${outputName.trim()}.pdf`);
 
       console.log(`\n🔄 Processing ${urls.length} files...`);
       console.log("═".repeat(50));
@@ -468,6 +483,13 @@ program
     if (options.name) {
       // If -n is provided, use it as filename with .pdf extension in output folder
       outputPath = path.join("output", `${options.name}.pdf`);
+    }
+
+    // Check if output file already exists (direct mode - return error)
+    if (await fs.pathExists(outputPath)) {
+      console.error(`❌ Error: Output file '${outputPath}' already exists`);
+      console.error("💡 Please choose a different filename or remove the existing file");
+      process.exit(1);
     }
 
     console.log("🚀 PDF Merge CLI");
