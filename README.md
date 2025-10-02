@@ -6,10 +6,12 @@ A command-line tool to merge PDF files and images from Google Drive URLs into a 
 
 - ✅ Download files from publicly shared Google Drive URLs
 - ✅ Support for PDF files and common image formats (PNG, JPG, JPEG, GIF, BMP, WEBP)
-- ✅ Automatic image-to-PDF conversion
+- ✅ Automatic image-to-PDF conversion with EXIF orientation correction
 - ✅ Merge multiple PDFs into a single document
+- ✅ **Pre-flight permission checking** - validates all URLs before processing
 - ✅ Command-line interface with progress indicators
 - ✅ Automatic cleanup of temporary files
+- ✅ Smart edge case handling (single URL detection)
 
 ## Installation
 
@@ -142,12 +144,17 @@ Images are automatically converted to PDF pages with the following features:
 
 The tool includes comprehensive error handling for:
 
+- **Pre-flight permission checking**: Validates all URLs before processing begins
 - Invalid Google Drive URLs
 - Network connection issues
 - Unsupported file formats
 - File access permissions
 - Disk space issues
 - **Single file input**: When only one URL is provided, the tool will display an informational message and exit without processing (no merging needed)
+
+### Permission Validation
+
+Before downloading any files, the tool performs a pre-flight check on all provided URLs to ensure they are accessible. If any URL fails the permission check, **no processing occurs** and you'll receive a detailed report of which URLs need attention.
 
 ## Troubleshooting
 
