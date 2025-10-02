@@ -6,6 +6,7 @@ const path = require("path");
 const axios = require("axios");
 const { PDFDocument } = require("pdf-lib");
 const sharp = require("sharp");
+const readline = require("readline");
 
 // Function to parse URLs from a string with multiple separators
 function parseUrls(input) {
@@ -204,6 +205,119 @@ async function testUrlAccess(url, index) {
   }
 }
 
+// Interactive mode function
+async function runInteractiveMode() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  // Function to ask a question and return a promise
+  const askQuestion = (question) => {
+    return new Promise((resolve) => {
+      rl.question(question, resolve);
+    });
+  };
+
+  // Function to ask for multi-line input
+  const askMultiLineQuestion = (question) => {
+    return new Promise((resolve) => {
+      console.log(question);
+      console.log("💡 Tip: You can paste multiple URLs separated by spaces, commas, or newlines");
+      console.log("📝 Press Enter twice when done, or type 'done' on a new line:");
+      
+      let input = "";
+      let emptyLineCount = 0;
+      
+      const onLine = (line) => {
+        if (line.trim() === "done" || emptyLineCount >= 1) {
+          rl.removeListener('line', onLine);
+          resolve(input.trim());
+          return;
+        }
+        
+        if (line.trim() === "") {
+          emptyLineCount++;
+        } else {
+          emptyLineCount = 0;
+          input += line + "\n";
+        }
+      };
+      
+      rl.on('line', onLine);
+    });
+  };
+
+  console.log("🚀 PDF Merge CLI - Interactive Mode");
+  console.log("=====================================");
+  console.log("Welcome! This tool will help you merge PDF files and images from Google Drive URLs.");
+  console.log("Press Ctrl+C anytime to exit.\n");
+
+  // Ensure output directory exists
+  const outputDir = path.join(__dirname, "output");
+  await fs.ensureDir(outputDir);
+
+  while (true) {
+    try {
+      console.log("📋 Step 1: Provide Google Drive URLs");
+      console.log("────────────────────────────────────");
+      
+      const urlsInput = await askMultiLineQuestion(
+        "🔗 Enter Google Drive URLs (publicly shared):"
+      );
+      
+      if (!urlsInput.trim()) {
+        console.log("⚠️  No URLs provided. Please try again.\n");
+        continue;
+      }
+
+      // Parse URLs
+      const urls = parseUrls(urlsInput);
+      
+      if (urls.length === 0) {
+        console.log("⚠️  No valid URLs found. Please try again.\n");
+        continue;
+      }
+
+      if (urls.length === 1) {
+        console.log("ℹ️  Only one URL provided - no need to merge!");
+        console.log("💡 Tip: Provide multiple URLs to merge files together\n");
+        continue;
+      }
+
+      console.log(`✅ Found ${urls.length} URLs to process\n`);
+
+      console.log("📝 Step 2: Choose output filename");
+      console.log("──────────────────────────────────");
+      
+      const outputName = await askQuestion(
+        "📄 Enter output filename (without .pdf extension): "
+      );
+      
+      if (!outputName.trim()) {
+        console.log("⚠️  No filename provided. Please try again.\n");
+        continue;
+      }
+
+      const outputPath = path.join("output", `${outputName.trim()}.pdf`);
+      
+      console.log(`\n🔄 Processing ${urls.length} files...`);
+      console.log("═".repeat(50));
+
+      // Process files (this will handle permission checking and merging)
+      await processFiles(urls, outputPath);
+      
+      console.log("═".repeat(50));
+      console.log("🎉 Success! Ready for next merge.\n");
+      
+    } catch (error) {
+      console.log("═".repeat(50));
+      console.log(`❌ Error occurred: ${error.message}`);
+      console.log("💡 Please try again with different URLs or check the file permissions.\n");
+    }
+  }
+}
+
 // Main function to process files
 async function processFiles(urls, outputPath) {
   const tempDir = path.join(__dirname, "temp");
@@ -239,7 +353,7 @@ async function processFiles(urls, outputPath) {
         console.log(`   ${failed.url}`);
       });
 
-      return; // Exit without processing
+      throw new Error("Permission check failed - please verify URL access and try again");
     }
 
     console.log(`✅ All files accessible! Starting download and processing...`);
@@ -298,7 +412,19 @@ program
   .description(
     "Merge PDF files and images from Google Drive URLs into a single PDF"
   )
-  .version("1.0.0")
+  .version("1.0.0");
+
+// Interactive mode command
+program
+  .command("interactive")
+  .alias("i")
+  .description("Start interactive mode - guided PDF merging with prompts")
+  .action(async () => {
+    await runInteractiveMode();
+  });
+
+// Direct command mode (existing functionality)
+program
   .argument(
     "<urls>",
     "Google Drive URLs (publicly shared) - can be space, newline, or comma separated"
@@ -339,7 +465,12 @@ program
     console.log(`📋 Input URLs: ${urls.length}`);
     console.log(`📄 Output file: ${outputPath}`);
 
-    await processFiles(urls, outputPath);
+    try {
+      await processFiles(urls, outputPath);
+    } catch (error) {
+      console.error(`❌ Error: ${error.message}`);
+      process.exit(1);
+    }
   });
 
 // Handle unhandled promise rejections

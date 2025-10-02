@@ -4,6 +4,8 @@ A command-line tool to merge PDF files and images from Google Drive URLs into a 
 
 ## Features
 
+- ✅ **Interactive mode** - Guided experience with prompts and continuous operation
+- ✅ **Direct command mode** - One-time usage for scripting and automation
 - ✅ Download files from publicly shared Google Drive URLs
 - ✅ Support for PDF files and common image formats (PNG, JPG, JPEG, GIF, BMP, WEBP)
 - ✅ Automatic image-to-PDF conversion with EXIF orientation correction
@@ -12,6 +14,7 @@ A command-line tool to merge PDF files and images from Google Drive URLs into a 
 - ✅ Command-line interface with progress indicators
 - ✅ Automatic cleanup of temporary files
 - ✅ Smart edge case handling (single URL detection)
+- ✅ **Flexible input formats** - space, comma, newline separated URLs
 
 ## Installation
 
@@ -30,7 +33,52 @@ chmod +x index.js
 
 ## Usage
 
-### Basic Usage
+### Interactive Mode (Recommended)
+
+Start the interactive mode for a guided experience:
+
+```bash
+node index.js interactive
+# or use the short alias:
+node index.js i
+```
+
+The interactive mode will:
+1. **Prompt for URLs**: Enter multiple Google Drive URLs with flexible formatting
+2. **Ask for filename**: Specify the output filename (without .pdf extension)  
+3. **Process and merge**: Automatically handle downloading, conversion, and merging
+4. **Repeat**: Continue with new merges until you press Ctrl+C to exit
+5. **Error handling**: If there are issues, you can try again without restarting
+
+**Interactive Mode Workflow:**
+```
+🚀 PDF Merge CLI - Interactive Mode
+=====================================
+Welcome! This tool will help you merge PDF files and images from Google Drive URLs.
+Press Ctrl+C anytime to exit.
+
+📋 Step 1: Provide Google Drive URLs
+────────────────────────────────────
+🔗 Enter Google Drive URLs (publicly shared):
+💡 Tip: You can paste multiple URLs separated by spaces, commas, or newlines
+📝 Press Enter twice when done, or type 'done' on a new line:
+
+[Enter your URLs here]
+
+✅ Found 3 URLs to process
+
+📝 Step 2: Choose output filename
+──────────────────────────────────
+📄 Enter output filename (without .pdf extension): my-merged-document
+
+🔄 Processing 3 files...
+[Processing output...]
+🎉 Success! Ready for next merge.
+```
+
+### Direct Command Mode
+
+For one-time usage or scripting:
 
 ```bash
 node index.js "<urls>" [options]
