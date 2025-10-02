@@ -1,0 +1,31 @@
+{
+  "name": "pdf-merge-cli",
+  "version": "1.0.0",
+  "description": "A command-line tool to merge PDF files and images from Google Drive URLs into a single PDF",
+  "main": "index.js",
+  "bin": {
+    "pdf-merge": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "pdf",
+    "merge",
+    "cli",
+    "google-drive",
+    "image-to-pdf"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "axios": "^1.5.0",
+    "sharp": "^0.32.6",
+    "commander": "^11.0.0",
+    "fs-extra": "^11.1.1",
+    "path": "^0.12.7",
+    "url": "^0.11.3"
+  }
+}
