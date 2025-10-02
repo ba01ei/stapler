@@ -223,19 +223,23 @@ async function runInteractiveMode() {
   const askMultiLineQuestion = (question) => {
     return new Promise((resolve) => {
       console.log(question);
-      console.log("💡 Tip: You can paste multiple URLs separated by spaces, commas, or newlines");
-      console.log("📝 Press Enter twice when done, or type 'done' on a new line:");
-      
+      console.log(
+        "💡 Tip: You can paste multiple URLs separated by spaces, commas, or newlines"
+      );
+      console.log(
+        "📝 Press Enter twice when done, or type 'done' on a new line:"
+      );
+
       let input = "";
       let emptyLineCount = 0;
-      
+
       const onLine = (line) => {
         if (line.trim() === "done" || emptyLineCount >= 1) {
-          rl.removeListener('line', onLine);
+          rl.removeListener("line", onLine);
           resolve(input.trim());
           return;
         }
-        
+
         if (line.trim() === "") {
           emptyLineCount++;
         } else {
@@ -243,14 +247,16 @@ async function runInteractiveMode() {
           input += line + "\n";
         }
       };
-      
-      rl.on('line', onLine);
+
+      rl.on("line", onLine);
     });
   };
 
   console.log("🚀 PDF Merge CLI - Interactive Mode");
   console.log("=====================================");
-  console.log("Welcome! This tool will help you merge PDF files and images from Google Drive URLs.");
+  console.log(
+    "Welcome! This tool will help you merge PDF files and images from Google Drive URLs."
+  );
   console.log("Press Ctrl+C anytime to exit.\n");
 
   // Ensure output directory exists
@@ -261,11 +267,11 @@ async function runInteractiveMode() {
     try {
       console.log("📋 Step 1: Provide Google Drive URLs");
       console.log("────────────────────────────────────");
-      
+
       const urlsInput = await askMultiLineQuestion(
         "🔗 Enter Google Drive URLs (publicly shared):"
       );
-      
+
       if (!urlsInput.trim()) {
         console.log("⚠️  No URLs provided. Please try again.\n");
         continue;
@@ -273,7 +279,7 @@ async function runInteractiveMode() {
 
       // Parse URLs
       const urls = parseUrls(urlsInput);
-      
+
       if (urls.length === 0) {
         console.log("⚠️  No valid URLs found. Please try again.\n");
         continue;
@@ -289,31 +295,32 @@ async function runInteractiveMode() {
 
       console.log("📝 Step 2: Choose output filename");
       console.log("──────────────────────────────────");
-      
+
       const outputName = await askQuestion(
         "📄 Enter output filename (without .pdf extension): "
       );
-      
+
       if (!outputName.trim()) {
         console.log("⚠️  No filename provided. Please try again.\n");
         continue;
       }
 
       const outputPath = path.join("output", `${outputName.trim()}.pdf`);
-      
+
       console.log(`\n🔄 Processing ${urls.length} files...`);
       console.log("═".repeat(50));
 
       // Process files (this will handle permission checking and merging)
       await processFiles(urls, outputPath);
-      
+
       console.log("═".repeat(50));
       console.log("🎉 Success! Ready for next merge.\n");
-      
     } catch (error) {
       console.log("═".repeat(50));
       console.log(`❌ Error occurred: ${error.message}`);
-      console.log("💡 Please try again with different URLs or check the file permissions.\n");
+      console.log(
+        "💡 Please try again with different URLs or check the file permissions.\n"
+      );
     }
   }
 }
@@ -353,7 +360,9 @@ async function processFiles(urls, outputPath) {
         console.log(`   ${failed.url}`);
       });
 
-      throw new Error("Permission check failed - please verify URL access and try again");
+      throw new Error(
+        "Permission check failed - please verify URL access and try again"
+      );
     }
 
     console.log(`✅ All files accessible! Starting download and processing...`);

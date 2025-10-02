@@ -2,6 +2,15 @@
 
 A command-line tool to merge PDF files and images from Google Drive URLs into a single PDF document.
 
+## Quick Start
+
+```bash
+npm install
+npm run interactive
+```
+
+Then follow the prompts to merge your files!
+
 ## Features
 
 - ✅ **Interactive mode** - Guided experience with prompts and continuous operation
@@ -38,6 +47,12 @@ chmod +x index.js
 Start the interactive mode for a guided experience:
 
 ```bash
+# Using npm (simplest)
+npm run interactive
+# or even shorter:
+npm run i
+
+# Using node directly
 node index.js interactive
 # or use the short alias:
 node index.js i
