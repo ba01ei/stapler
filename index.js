@@ -155,46 +155,51 @@ async function testUrlAccess(url, index) {
   try {
     const fileId = extractFileId(url);
     const downloadUrl = getDirectDownloadUrl(fileId);
-    
+
     // Test with a small range request to check accessibility and get some content
     const response = await axios({
       method: "get",
       url: downloadUrl,
       timeout: 10000, // 10 second timeout
       headers: {
-        'Range': 'bytes=0-1023' // Request first 1KB to test access
+        Range: "bytes=0-1023", // Request first 1KB to test access
       },
       validateStatus: function (status) {
         // Accept 200 (full content) and 206 (partial content)
         return status === 200 || status === 206;
-      }
+      },
     });
-    
+
     // Check if we got actual file content (not an error page)
-    const contentType = response.headers['content-type'] || '';
-    const contentLength = response.headers['content-length'] || '0';
-    
+    const contentType = response.headers["content-type"] || "";
+    const contentLength = response.headers["content-length"] || "0";
+
     // If it's HTML, it's likely an error page from Google Drive
-    if (contentType.includes('text/html')) {
+    if (contentType.includes("text/html")) {
       return {
         success: false,
         url,
         index,
-        error: 'Permission denied or file not accessible'
+        error: "Permission denied or file not accessible",
       };
     }
-    
+
     return { success: true, url, index, fileId };
   } catch (error) {
-    return { 
-      success: false, 
-      url, 
-      index, 
-      error: error.response?.status === 403 ? 'Permission denied' : 
-             error.response?.status === 404 ? 'File not found' :
-             error.code === 'ENOTFOUND' ? 'Network error' :
-             error.code === 'ECONNRESET' ? 'Connection reset' :
-             error.message || 'Unknown error'
+    return {
+      success: false,
+      url,
+      index,
+      error:
+        error.response?.status === 403
+          ? "Permission denied"
+          : error.response?.status === 404
+          ? "File not found"
+          : error.code === "ENOTFOUND"
+          ? "Network error"
+          : error.code === "ECONNRESET"
+          ? "Connection reset"
+          : error.message || "Unknown error",
     };
   }
 }
@@ -206,37 +211,39 @@ async function processFiles(urls, outputPath) {
 
   try {
     console.log(`📥 Checking access to ${urls.length} files...`);
-    
+
     // Test all URLs for accessibility first
     const accessTests = await Promise.all(
       urls.map((url, index) => testUrlAccess(url, index + 1))
     );
-    
+
     // Check if any URLs failed
-    const failedUrls = accessTests.filter(test => !test.success);
-    
+    const failedUrls = accessTests.filter((test) => !test.success);
+
     if (failedUrls.length > 0) {
-      console.log(`\n❌ Access issues detected for ${failedUrls.length} file(s):`);
-      failedUrls.forEach(failed => {
+      console.log(
+        `\n❌ Access issues detected for ${failedUrls.length} file(s):`
+      );
+      failedUrls.forEach((failed) => {
         console.log(`   File ${failed.index}: ${failed.error}`);
         console.log(`   URL: ${failed.url}`);
       });
-      
+
       console.log(`\n🔒 Permission Check Failed!`);
       console.log(`💡 Please check the following:`);
       console.log(`   • Ensure all Google Drive files are shared publicly`);
       console.log(`   • Verify "Anyone with the link can view" is enabled`);
       console.log(`   • Check that the URLs are correct and files exist`);
       console.log(`\n📋 Failed URLs to check:`);
-      failedUrls.forEach(failed => {
+      failedUrls.forEach((failed) => {
         console.log(`   ${failed.url}`);
       });
-      
+
       return; // Exit without processing
     }
-    
+
     console.log(`✅ All files accessible! Starting download and processing...`);
-    
+
     const pdfBuffers = [];
 
     for (let i = 0; i < urls.length; i++) {
