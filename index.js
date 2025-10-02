@@ -228,6 +228,16 @@ program
       process.exit(1);
     }
 
+    // Handle single URL case
+    if (urls.length === 1) {
+      console.log("🚀 PDF Merge CLI");
+      console.log(`📋 Input URLs: ${urls.length}`);
+      console.log("ℹ️  Only one file provided - no need to merge!");
+      console.log("💡 Tip: Provide multiple URLs to merge files together");
+      console.log(`🔗 Your URL: ${urls[0]}`);
+      return;
+    }
+
     // Ensure output directory exists
     const outputDir = path.join(__dirname, "output");
     await fs.ensureDir(outputDir);

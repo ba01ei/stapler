@@ -61,6 +61,9 @@ https://drive.google.com/file/d/3GHI789/view" --name final-document
 # Mixed separators with short filename (saves to output/report-2024.pdf)
 node index.js "https://drive.google.com/file/d/1ABC123/view, https://drive.google.com/file/d/2DEF456/view
 https://drive.google.com/file/d/3GHI789/view" -n report-2024
+
+# Single URL - will show informational message and exit (no processing)
+node index.js "https://drive.google.com/file/d/1ABC123/view"
 ```
 
 ### Options
@@ -144,6 +147,7 @@ The tool includes comprehensive error handling for:
 - Unsupported file formats
 - File access permissions
 - Disk space issues
+- **Single file input**: When only one URL is provided, the tool will display an informational message and exit without processing (no merging needed)
 
 ## Troubleshooting
 
