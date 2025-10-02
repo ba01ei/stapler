@@ -17,10 +17,11 @@ Then follow the prompts to merge your files!
 - ✅ **Direct command mode** - One-time usage for scripting and automation
 - ✅ **Smart URL extraction** - Finds Google Drive URLs from mixed text input
 - ✅ Download files from publicly shared Google Drive URLs
-- ✅ Support for PDF files and common image formats (PNG, JPG, JPEG, GIF, BMP, WEBP)
+- ✅ Support for PDF files and common image formats (PNG, JPG, JPEG, GIF, BMP, WEBP, HEIC*)
 - ✅ Automatic image-to-PDF conversion with EXIF orientation correction
 - ✅ Merge multiple PDFs into a single document
 - ✅ **Pre-flight permission checking** - validates all URLs before processing
+- ✅ **Robust error handling** - continues processing when individual files fail
 - ✅ Command-line interface with progress indicators
 - ✅ Automatic cleanup of temporary files
 - ✅ Smart edge case handling (single URL detection)
@@ -200,6 +201,9 @@ The Google Drive files must be **publicly shared**. The tool supports various Go
 - `.gif` - Graphics Interchange Format
 - `.bmp` - Bitmap Image File
 - `.webp` - WebP Image Format
+- `.heic` / `.heif` - High Efficiency Image Container (limited support)*
+
+**Note on HEIC support:** HEIC/HEIF files are detected but may fail to process depending on the specific codec used and Sharp library configuration. The tool will continue processing other files if HEIC conversion fails.
 
 Images are automatically converted to PDF pages with the following features:
 

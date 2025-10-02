@@ -19,8 +19,10 @@ function parseUrls(input) {
   // Filter to only keep valid Google Drive URLs
   const urls = tokens.filter((token) => {
     // Check if token looks like a Google Drive URL
-    return token.includes('drive.google.com') && 
-           (token.includes('/file/d/') || token.includes('id='));
+    return (
+      token.includes("drive.google.com") &&
+      (token.includes("/file/d/") || token.includes("id="))
+    );
   });
 
   return urls;
@@ -88,12 +90,26 @@ async function getFileType(filePath) {
       gif: [0x47, 0x49, 0x46],
       bmp: [0x42, 0x4d],
       webp: [0x52, 0x49, 0x46, 0x46],
+      heic: [0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63], // HEIC signature (first 12 bytes)
     };
 
     for (const [type, signature] of Object.entries(signatures)) {
-      if (signature.every((byte, index) => buffer[index] === byte)) {
-        return "image";
+      if (type === 'heic') {
+        // HEIC has a longer signature, check first 12 bytes
+        if (signature.every((byte, index) => buffer[index] === byte)) {
+          return "image";
+        }
+      } else {
+        if (signature.every((byte, index) => buffer[index] === byte)) {
+          return "image";
+        }
       }
+    }
+
+    // Additional check for HEIC files (alternative signature)
+    const heicAlt = buffer.slice(4, 12).toString();
+    if (heicAlt === 'ftypheic' || heicAlt === 'ftypmif1') {
+      return "image";
     }
 
     throw new Error("Unsupported file type");
@@ -105,16 +121,27 @@ async function getFileType(filePath) {
 // Function to convert image to PDF
 async function imageToPdf(imagePath) {
   try {
+    // First, try to read the image and get metadata to check if it's supported
+    let sharpInstance = sharp(imagePath);
+    
+    try {
+      const metadata = await sharpInstance.metadata();
+      console.log(`   📏 Image: ${metadata.width}x${metadata.height}, format: ${metadata.format}`);
+    } catch (metadataError) {
+      console.log(`   ⚠️  Warning: Could not read metadata: ${metadataError.message}`);
+    }
+
     // Process image with Sharp, applying auto-rotation based on EXIF data
-    const processedImageBuffer = await sharp(imagePath)
+    // Sharp automatically handles HEIC files when properly configured
+    const processedImageBuffer = await sharpInstance
       .rotate() // Auto-rotate based on EXIF orientation
-      .jpeg({ quality: 90 })
+      .jpeg({ quality: 90 }) // Convert to JPEG for PDF embedding
       .toBuffer();
 
     // Get the dimensions of the processed image
-    const metadata = await sharp(processedImageBuffer).metadata();
-    const imageWidth = metadata.width;
-    const imageHeight = metadata.height;
+    const finalMetadata = await sharp(processedImageBuffer).metadata();
+    const imageWidth = finalMetadata.width;
+    const imageHeight = finalMetadata.height;
 
     const pdfDoc = await PDFDocument.create();
     const image = await pdfDoc.embedJpg(processedImageBuffer);
@@ -132,6 +159,10 @@ async function imageToPdf(imagePath) {
 
     return await pdfDoc.save();
   } catch (error) {
+    // Provide more specific error information
+    if (error.message.includes('heif') || error.message.includes('HEIF')) {
+      throw new Error(`HEIC/HEIF processing failed: ${error.message}. This may be due to unsupported HEIC codec or Sharp configuration.`);
+    }
     throw new Error(`Failed to convert image to PDF: ${error.message}`);
   }
 }
@@ -230,15 +261,17 @@ async function runInteractiveMode() {
   const askMultiLineQuestion = (question) => {
     return new Promise((resolve) => {
       console.log(question);
-      console.log("💡 Tip: Paste URLs (any format) and press Enter - non-URL text will be ignored");
-      
+      console.log(
+        "💡 Tip: Paste URLs (any format) and press Enter - non-URL text will be ignored"
+      );
+
       let input = "";
-      
+
       const onLine = (line) => {
         rl.removeListener("line", onLine);
         resolve(line.trim());
       };
-      
+
       rl.on("line", onLine);
     });
   };
@@ -260,7 +293,7 @@ async function runInteractiveMode() {
       console.log("────────────────────────────────────");
 
       let urls = [];
-      
+
       // Loop until we get valid URLs
       while (urls.length === 0) {
         const urlsInput = await askMultiLineQuestion(
@@ -277,19 +310,23 @@ async function runInteractiveMode() {
 
         if (urls.length === 0) {
           console.log("⚠️  No valid Google Drive URLs found in your input.");
-          console.log("💡 Make sure URLs contain 'drive.google.com' and are publicly shared.\n");
+          console.log(
+            "💡 Make sure URLs contain 'drive.google.com' and are publicly shared.\n"
+          );
           continue;
         }
 
         if (urls.length === 1) {
           console.log("ℹ️  Only one URL found - no need to merge!");
-          console.log("💡 Tip: Provide multiple URLs to merge files together\n");
+          console.log(
+            "💡 Tip: Provide multiple URLs to merge files together\n"
+          );
           urls = []; // Reset to ask again
           continue;
         }
 
         console.log(`✅ Found ${urls.length} valid URLs to process`);
-        
+
         // Show which URLs were extracted
         urls.forEach((url, index) => {
           console.log(`   ${index + 1}. ${url}`);
@@ -339,10 +376,12 @@ async function runInteractiveMode() {
     } catch (error) {
       console.log("═".repeat(50));
       console.log(`❌ Error occurred: ${error.message}`);
-      
+
       // Check if it's a permission error - if so, ask for URLs again
       if (error.message.includes("Permission check failed")) {
-        console.log("💡 Please check the URLs and try again with different ones.\n");
+        console.log(
+          "💡 Please check the URLs and try again with different ones.\n"
+        );
         continue; // Go back to asking for URLs
       } else {
         console.log(
@@ -396,39 +435,80 @@ async function processFiles(urls, outputPath) {
     console.log(`✅ All files accessible! Starting download and processing...`);
 
     const pdfBuffers = [];
+    const failedFiles = [];
 
     for (let i = 0; i < urls.length; i++) {
       const url = urls[i];
       console.log(`\n🔗 Processing file ${i + 1}/${urls.length}: ${url}`);
 
-      // Extract file ID and create download URL
-      const fileId = extractFileId(url);
-      const downloadUrl = getDirectDownloadUrl(fileId);
+      try {
+        // Extract file ID and create download URL
+        const fileId = extractFileId(url);
+        const downloadUrl = getDirectDownloadUrl(fileId);
 
-      // Download file to temp directory
-      const tempFilePath = path.join(tempDir, `file_${i}_${fileId}`);
-      console.log(`⬇️  Downloading...`);
-      await downloadFile(downloadUrl, tempFilePath);
+        // Download file to temp directory
+        const tempFilePath = path.join(tempDir, `file_${i}_${fileId}`);
+        console.log(`⬇️  Downloading...`);
+        await downloadFile(downloadUrl, tempFilePath);
 
-      // Determine file type and process accordingly
-      const fileType = await getFileType(tempFilePath);
-      console.log(`📄 File type detected: ${fileType}`);
+        // Determine file type and process accordingly
+        const fileType = await getFileType(tempFilePath);
+        console.log(`📄 File type detected: ${fileType}`);
 
-      let pdfBuffer;
-      if (fileType === "pdf") {
-        pdfBuffer = await fs.readFile(tempFilePath);
-      } else if (fileType === "image") {
-        console.log(`🖼️  Converting image to PDF...`);
-        pdfBuffer = await imageToPdf(tempFilePath);
-      } else {
-        throw new Error(`Unsupported file type: ${fileType}`);
+        let pdfBuffer;
+        if (fileType === "pdf") {
+          pdfBuffer = await fs.readFile(tempFilePath);
+        } else if (fileType === "image") {
+          console.log(`🖼️  Converting image to PDF...`);
+          pdfBuffer = await imageToPdf(tempFilePath);
+        } else {
+          throw new Error(`Unsupported file type: ${fileType}`);
+        }
+
+        pdfBuffers.push(pdfBuffer);
+
+        // Clean up temp file
+        await fs.remove(tempFilePath);
+        console.log(`✅ File ${i + 1} processed successfully`);
+      } catch (error) {
+        console.log(`❌ File ${i + 1} failed: ${error.message}`);
+        failedFiles.push({
+          url: url,
+          index: i + 1,
+          error: error.message
+        });
+        
+        // Clean up temp file if it exists
+        try {
+          const fileId = extractFileId(url);
+          const tempFilePath = path.join(tempDir, `file_${i}_${fileId}`);
+          await fs.remove(tempFilePath);
+        } catch (cleanupError) {
+          // Ignore cleanup errors
+        }
       }
+    }
 
-      pdfBuffers.push(pdfBuffer);
+    // Check if we have any successful files to merge
+    if (pdfBuffers.length === 0) {
+      console.log(`\n❌ No files were successfully processed.`);
+      if (failedFiles.length > 0) {
+        console.log(`\n📋 Failed files (${failedFiles.length}):`);
+        failedFiles.forEach(failed => {
+          console.log(`   File ${failed.index}: ${failed.error}`);
+          console.log(`   URL: ${failed.url}`);
+        });
+      }
+      throw new Error("All files failed to process - no PDF will be generated");
+    }
 
-      // Clean up temp file
-      await fs.remove(tempFilePath);
-      console.log(`✅ File ${i + 1} processed successfully`);
+    // Show summary if some files failed
+    if (failedFiles.length > 0) {
+      console.log(`\n⚠️  ${failedFiles.length} file(s) failed to process:`);
+      failedFiles.forEach(failed => {
+        console.log(`   File ${failed.index}: ${failed.error}`);
+      });
+      console.log(`\n✅ Continuing with ${pdfBuffers.length} successful file(s)...`);
     }
 
     // Merge all PDFs
