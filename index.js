@@ -2,6 +2,7 @@
 
 const { program } = require("commander");
 const fs = require("fs-extra");
+const os = require("os");
 const path = require("path");
 const axios = require("axios");
 const { PDFDocument } = require("pdf-lib");
@@ -337,7 +338,8 @@ async function runInteractiveMode() {
   console.log("Press Ctrl+C anytime to exit.\n");
 
   // Ensure output directory exists
-  const outputDir = path.join(__dirname, "output");
+  // Output directory should be ~/Downloads
+  const outputDir = path.join(os.homedir(), "Downloads");
   await fs.ensureDir(outputDir);
 
   while (true) {
@@ -404,7 +406,7 @@ async function runInteractiveMode() {
           continue;
         }
 
-        outputPath = path.join("output", `${outputName.trim()}.pdf`);
+        outputPath = path.join(outputDir, `${outputName.trim()}.pdf`);
 
         // Check if file already exists
         if (await fs.pathExists(outputPath)) {
